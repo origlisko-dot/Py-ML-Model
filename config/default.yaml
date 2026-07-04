@@ -1,0 +1,15 @@
+# Global configuration. Loaded by trading_ml.config.Settings.
+# Environment variables (see .env.example) override secrets; this file holds
+# non-secret, versioned defaults.
+
+seed: 42
+
+paths:
+  data_dir: data
+  raw_dir: data/raw          # provider dumps
+  parquet_dir: data/parquet  # partitioned OHLCV store (symbol/timeframe/year/month)
+  artifacts_dir: artifacts   # model checkpoints, reports
+
+mlflow:
+  tracking_uri: ./mlruns
+  experiment: trading-ml
