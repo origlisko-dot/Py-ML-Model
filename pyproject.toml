@@ -1,0 +1,88 @@
+[project]
+name = "trading-ml"
+version = "0.1.0"
+description = "Multi-timeframe ML models for day-trading equities (technical, risk, event-driven)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Py-ML-Model" }]
+
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.1",
+    "pyarrow>=15.0",
+    "duckdb>=1.0",
+    "pyyaml>=6.0",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "pandera>=0.18",
+    "typer>=0.12",
+    "rich>=13.7",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+# Heavy ML stack — kept optional so the data/feature layers and CI stay lightweight.
+ml = [
+    "torch>=2.2",
+    "lightning>=2.2",
+    "lightgbm>=4.3",
+    "scikit-learn>=1.4",
+    "mlflow>=2.12",
+]
+# Live/paper market data + news providers.
+providers = [
+    "yfinance>=0.2.40",
+    "ib_async>=1.0",
+]
+# NLP scaffold for the event-driven model (Model 3).
+nlp = [
+    "transformers>=4.40",
+]
+dev = [
+    "pytest>=8.1",
+    "pytest-cov>=5.0",
+    "ruff>=0.4",
+    "mypy>=1.10",
+    "types-pyyaml",
+]
+
+[project.scripts]
+trading-ml = "trading_ml.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/trading_ml"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "C4"]
+ignore = ["B008"]  # typer uses function calls in argument defaults
+
+[tool.ruff.lint.isort]
+# Pin first-party detection so import grouping is identical locally and in CI
+# (CI would otherwise treat `trading_ml` as third-party and reflow the blocks).
+known-first-party = ["trading_ml"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+packages = ["trading_ml"]
+ignore_missing_imports = true
+warn_unused_ignores = false
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+pythonpath = ["src"]
+filterwarnings = ["ignore::DeprecationWarning"]

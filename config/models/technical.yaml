@@ -1,0 +1,36 @@
+# Model 1 — multi-timeframe technical analysis. Hyperparameters.
+
+data:
+  base_timeframe: 5m         # timeframe at which decisions/labels are formed
+  context_timeframes: [5m, 15m, 1h, 1d]  # timeframes fed to the model
+  window: 64                 # bars of history per timeframe fed to the encoder
+  horizon: 12                # bars ahead for the label (in base_timeframe units)
+
+labeling:
+  method: triple_barrier
+  take_profit_atr: 2.0       # upper barrier = entry + tp * ATR
+  stop_loss_atr: 1.0         # lower barrier = entry - sl * ATR
+  atr_window: 14
+
+network:
+  encoder: tcn               # tcn | transformer
+  d_model: 64
+  n_heads: 4
+  encoder_layers: 2
+  dropout: 0.1
+
+train:
+  batch_size: 128
+  max_epochs: 20
+  lr: 0.001
+  weight_decay: 0.0001
+  val_fraction: 0.2          # temporal (walk-forward) split, no shuffling
+  early_stopping_patience: 4
+  num_workers: 0
+
+baseline:
+  # LightGBM on flattened multi-timeframe features.
+  n_estimators: 300
+  learning_rate: 0.05
+  num_leaves: 31
+  max_depth: -1
