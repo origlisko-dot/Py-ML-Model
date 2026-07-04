@@ -11,11 +11,11 @@ venv/
 # Env / secrets
 .env
 
-# Data & artifacts
-data/
-!data/.gitkeep
-artifacts/
-mlruns/
+# Data & artifacts (anchored to repo root so src/trading_ml/data is NOT ignored)
+/data/
+!/data/.gitkeep
+/artifacts/
+/mlruns/
 *.parquet
 *.ckpt
 *.pt
