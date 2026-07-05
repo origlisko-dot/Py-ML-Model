@@ -7,6 +7,9 @@ aggregated across folds — a far more honest estimate of live performance.
 
 Each fold trains a fresh network with a compact Torch loop (early-stopped on the
 validation balanced accuracy) so the whole sweep stays fast and self-contained.
+
+Torch is imported lazily inside the training routine so the pure-NumPy split
+helper (``walk_forward_splits``) is importable in environments without torch.
 """
 
 from __future__ import annotations
@@ -14,14 +17,9 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
-import torch
-from torch import nn
-from torch.utils.data import DataLoader, TensorDataset
 
 from trading_ml.models.technical.dataset import SampleBundle, apply_scaler, fit_scaler
 from trading_ml.models.technical.evaluation import classification_report
-from trading_ml.models.technical.module import _build_loss, _class_weights
-from trading_ml.models.technical.network import CrossTimeframeNet
 
 
 def walk_forward_splits(
@@ -57,6 +55,12 @@ def _train_one_fold(
     config: dict[str, Any],
     seed: int = 42,
 ) -> dict[str, float]:
+    import torch
+    from torch.utils.data import DataLoader, TensorDataset
+
+    from trading_ml.models.technical.module import _build_loss, _class_weights
+    from trading_ml.models.technical.network import CrossTimeframeNet
+
     torch.manual_seed(seed)
     ncfg = config["network"]
     tcfg = config["train"]
@@ -149,7 +153,3 @@ def _aggregate(reports: list[dict[str, float]]) -> dict[str, float]:
         agg[f"{k}_mean"] = float(vals.mean())
         agg[f"{k}_std"] = float(vals.std())
     return agg
-
-
-# Silence unused-import complaints for nn (kept for type clarity in signatures).
-_ = nn
