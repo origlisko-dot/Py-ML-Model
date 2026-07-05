@@ -85,6 +85,12 @@ class TechnicalBaseline(BaseModel):
         self.model.fit(flatten_features(train_b), train_b.y, eval_set=eval_set)
         return self
 
+    def probs_for_bundle(self, bundle) -> np.ndarray:
+        """Class probabilities (N, 3) for a pre-built sample bundle."""
+        if self.model is None:
+            raise RuntimeError("Baseline not fitted.")
+        return self.model.predict_proba(flatten_features(bundle))
+
     def predict(self, base_dfs: dict[str, pd.DataFrame], min_prob: float = 0.0) -> list[Signal]:
         if self.model is None:
             raise RuntimeError("Baseline not fitted.")

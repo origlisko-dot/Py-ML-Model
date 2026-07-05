@@ -64,3 +64,14 @@ def test_rsi_bounds(minute_ohlcv):
 def test_atr_positive(minute_ohlcv):
     a = atr(minute_ohlcv, 14).dropna()
     assert (a >= 0).all()
+
+
+def test_new_indicators_present_and_finite(minute_ohlcv):
+    from trading_ml.features.indicators import feature_columns
+
+    filled = fill_missing_bars(minute_ohlcv, "1m")
+    feats = add_indicators(filled)
+    cols = set(feature_columns(feats))
+    assert {"stoch_k", "stoch_d", "adx", "plus_di", "minus_di", "vwap_dev", "obv_z"}.issubset(cols)
+    tail = feats[list(cols)].iloc[60:]
+    assert np.isfinite(tail.to_numpy()).mean() > 0.95

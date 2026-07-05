@@ -5,8 +5,10 @@ around three models; **Model 1 is fully implemented**, Models 2–3 ship as
 well-defined scaffolds behind the same interfaces.
 
 1. **Technical analysis (Model 1, full)** — multi-timeframe candlestick / OHLCV
-   analysis (1m → 1d …), with per-timeframe encoders fused by a
-   **cross-timeframe attention** network, plus a LightGBM baseline.
+   analysis (1m → 1d …), with per-timeframe encoders (attention-pooled) fused by
+   a **cross-timeframe attention** network, plus a LightGBM baseline and a
+   probability-averaging **ensemble**. Includes focal loss, walk-forward
+   cross-validation, and Optuna hyperparameter tuning.
 2. **Risk management (Model 2, scaffold + basic impl)** — position sizing,
    ATR stops, Risk/Reward targets.
 3. **Event-driven (Model 3, scaffold)** — news/catalyst classification interface.
@@ -38,6 +40,7 @@ IBKR **pacing/throttling + checkpointing**, **no-lookahead** point-in-time align
 ```bash
 uv sync                        # core (data + features + CLI)
 uv sync --extra ml --extra providers   # add torch/lightning/lightgbm + data providers
+uv sync --extra tune                   # add Optuna for hyperparameter search
 ```
 
 ## Usage
@@ -51,6 +54,16 @@ uv run trading-ml train --model technical
 
 # 3. Backtest the trained model with the risk sizer
 uv run trading-ml backtest --model technical --symbols AAPL
+
+# Walk-forward cross-validation (honest out-of-sample metrics)
+uv run trading-ml evaluate --model technical
+
+# Optuna hyperparameter search (needs: uv sync --extra tune)
+uv run trading-ml tune --model technical --n-trials 20
+
+# Train / backtest the net+baseline ensemble
+uv run trading-ml train    --model technical --ensemble
+uv run trading-ml backtest --model technical --use-ensemble
 ```
 
 IBKR (optional, local): start TWS/IB Gateway on a **paper** account, set `IBKR_*`

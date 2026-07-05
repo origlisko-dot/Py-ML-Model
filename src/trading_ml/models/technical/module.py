@@ -9,7 +9,7 @@ feature scaler, trains the network, and emits :class:`Signal` objects.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -36,14 +36,48 @@ from trading_ml.models.technical.network import CrossTimeframeNet
 _CLASS_TO_DIR = {0: -1, 1: 0, 2: 1}
 
 
+class FocalLoss(nn.Module):
+    """Multi-class focal loss (Lin et al.) — down-weights easy, well-classified
+    samples so training focuses on the hard, ambiguous bars that dominate noisy
+    financial data. ``gamma=0`` reduces to weighted cross-entropy.
+    """
+
+    def __init__(self, gamma: float = 1.5, weight: torch.Tensor | None = None):
+        super().__init__()
+        self.gamma = gamma
+        self.register_buffer("weight", weight if weight is not None else None)
+
+    def forward(self, logits: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        log_prob = torch.log_softmax(logits, dim=1)
+        prob = log_prob.exp()
+        weight = cast("torch.Tensor | None", self.weight)
+        ce = torch.nn.functional.nll_loss(log_prob, target, weight=weight, reduction="none")
+        pt = prob.gather(1, target.unsqueeze(1)).squeeze(1)
+        return ((1.0 - pt) ** self.gamma * ce).mean()
+
+
+def _build_loss(name: str, gamma: float, class_weights) -> nn.Module:
+    weight = None if class_weights is None else torch.tensor(class_weights, dtype=torch.float32)
+    if name == "focal":
+        return FocalLoss(gamma=gamma, weight=weight)
+    return nn.CrossEntropyLoss(weight=weight)
+
+
 class LitTechnical(pl.LightningModule):
-    def __init__(self, net: CrossTimeframeNet, lr: float, weight_decay: float, class_weights=None):
+    def __init__(
+        self,
+        net: CrossTimeframeNet,
+        lr: float,
+        weight_decay: float,
+        class_weights=None,
+        loss: str = "ce",
+        focal_gamma: float = 1.5,
+    ):
         super().__init__()
         self.net = net
         self.lr = lr
         self.weight_decay = weight_decay
-        weight = None if class_weights is None else torch.tensor(class_weights, dtype=torch.float32)
-        self.loss_fn = nn.CrossEntropyLoss(weight=weight)
+        self.loss_fn = _build_loss(loss, focal_gamma, class_weights)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.net(x)
@@ -137,6 +171,8 @@ class TechnicalModel(BaseModel):
             lr=tcfg["lr"],
             weight_decay=tcfg["weight_decay"],
             class_weights=_class_weights(train_b.y),
+            loss=tcfg.get("loss", "ce"),
+            focal_gamma=tcfg.get("focal_gamma", 1.5),
         )
 
         from torch.utils.data import DataLoader
@@ -177,6 +213,15 @@ class TechnicalModel(BaseModel):
         return self
 
     # -- inference -------------------------------------------------------- #
+    @torch.no_grad()
+    def probs_for_bundle(self, bundle) -> np.ndarray:
+        """Class probabilities (N, 3) for a pre-built sample bundle."""
+        if self.net is None or self.scaler_mean is None or self.scaler_std is None:
+            raise RuntimeError("Model is not fitted/loaded.")
+        self.net.eval()
+        X = apply_scaler(bundle, self.scaler_mean, self.scaler_std)
+        return torch.softmax(self.net(torch.from_numpy(X)), dim=1).numpy()
+
     @torch.no_grad()
     def predict(self, base_dfs: dict[str, pd.DataFrame], min_prob: float = 0.0) -> list[Signal]:
         if self.net is None or self.scaler_mean is None or self.scaler_std is None:

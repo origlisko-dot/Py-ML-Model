@@ -66,6 +66,7 @@ def train(
     model: str = typer.Option("technical", help="Model to train."),
     symbols: str = typer.Option(None, help="Comma-separated symbols (default: config)."),
     baseline: bool = typer.Option(True, help="Also train the LightGBM baseline."),
+    ensemble: bool = typer.Option(False, help="Train the net+baseline ensemble instead."),
 ) -> None:
     """Train Model 1 (cross-timeframe attention) and, optionally, the baseline."""
     cfg = load_config()
@@ -78,11 +79,20 @@ def train(
         console.print(f"[red]No stored data for {syms} @ {base_tf}. Run `ingest` first.[/red]")
         raise typer.Exit(1)
 
+    art_dir = Path(cfg.paths.artifacts_dir)
+    if ensemble:
+        from trading_ml.models.technical.ensemble import EnsembleTechnicalModel
+
+        console.print(f"Training [bold]{model}[/bold] ENSEMBLE on {list(frames)} @ {base_tf} ...")
+        ens = EnsembleTechnicalModel(mcfg).fit(frames, logger=_mlflow_logger(cfg))
+        ens.save(art_dir / f"{model}_ensemble")
+        console.print(f"[green]Saved[/green] {art_dir / f'{model}_ensemble'}")
+        return
+
     from trading_ml.models.technical.module import TechnicalModel
 
     console.print(f"Training [bold]{model}[/bold] on {list(frames)} @ {base_tf} ...")
     net_model = TechnicalModel(mcfg).fit(frames, logger=_mlflow_logger(cfg))
-    art_dir = Path(cfg.paths.artifacts_dir)
     net_model.save(art_dir / f"{model}.pt")
     console.print(f"[green]Saved[/green] {art_dir / f'{model}.pt'}")
 
@@ -101,6 +111,7 @@ def backtest(
     symbols: str = typer.Option(None, help="Comma-separated symbols (default: config)."),
     min_prob: float = typer.Option(0.45, help="Minimum signal probability to trade."),
     use_baseline: bool = typer.Option(False, help="Backtest the LightGBM baseline instead."),
+    use_ensemble: bool = typer.Option(False, help="Backtest the net+baseline ensemble."),
 ) -> None:
     """Backtest a trained model with the risk sizer and print metrics."""
     cfg = load_config()
@@ -114,7 +125,11 @@ def backtest(
 
     art_dir = Path(cfg.paths.artifacts_dir)
     trained: BaseModel
-    if use_baseline:
+    if use_ensemble:
+        from trading_ml.models.technical.ensemble import EnsembleTechnicalModel
+
+        trained = EnsembleTechnicalModel.load(art_dir / f"{model}_ensemble")
+    elif use_baseline:
         from trading_ml.models.technical.baseline import TechnicalBaseline
 
         trained = TechnicalBaseline.load(art_dir / f"{model}_baseline.joblib")
@@ -150,6 +165,71 @@ def backtest(
     table.add_column("value", justify="right")
     for k, v in result.metrics.items():
         table.add_row(k, f"{v:.4f}")
+    console.print(table)
+
+
+@app.command()
+def evaluate(
+    model: str = typer.Option("technical", help="Model config to evaluate."),
+    symbols: str = typer.Option(None, help="Comma-separated symbols (default: config)."),
+) -> None:
+    """Walk-forward cross-validation: honest out-of-sample classification metrics."""
+    cfg = load_config()
+    mcfg = load_model_config(model)
+    syms = _parse_csv(symbols) or cfg.data.symbols
+    base_tf = mcfg["data"]["base_timeframe"]
+    frames = _read_base_frames(syms, base_tf)
+    if not frames:
+        console.print(f"[red]No stored data for {syms} @ {base_tf}. Run `ingest` first.[/red]")
+        raise typer.Exit(1)
+
+    from trading_ml.models.technical.module import TechnicalModel
+    from trading_ml.models.technical.walkforward import walk_forward_validate
+
+    bundle = TechnicalModel(mcfg)._bundle_from_dfs(frames)
+    console.print(f"Walk-forward validation on {len(bundle)} samples ...")
+    result = walk_forward_validate(bundle, mcfg)
+
+    agg = result["aggregate"]
+    table = Table(title=f"Walk-forward — {model} ({int(agg.get('n_folds', 0))} folds)")
+    table.add_column("metric")
+    table.add_column("mean", justify="right")
+    table.add_column("std", justify="right")
+    for key in ("balanced_accuracy", "macro_f1", "accuracy"):
+        table.add_row(key, f"{agg.get(key + '_mean', 0):.4f}", f"{agg.get(key + '_std', 0):.4f}")
+    console.print(table)
+
+
+@app.command()
+def tune(
+    model: str = typer.Option("technical", help="Model config to tune."),
+    symbols: str = typer.Option(None, help="Comma-separated symbols (default: config)."),
+    n_trials: int = typer.Option(None, help="Optuna trials (default: config)."),
+) -> None:
+    """Optuna hyperparameter search, scored by walk-forward balanced accuracy."""
+    cfg = load_config()
+    mcfg = load_model_config(model)
+    syms = _parse_csv(symbols) or cfg.data.symbols
+    base_tf = mcfg["data"]["base_timeframe"]
+    frames = _read_base_frames(syms, base_tf)
+    if not frames:
+        console.print(f"[red]No stored data for {syms} @ {base_tf}. Run `ingest` first.[/red]")
+        raise typer.Exit(1)
+
+    from trading_ml.models.technical.tune import tune_hyperparams
+
+    tcfg = mcfg.get("tune", {})
+    trials = n_trials if n_trials is not None else tcfg.get("n_trials", 20)
+    console.print(f"Tuning {model} over {trials} trials ...")
+    out = tune_hyperparams(
+        frames, mcfg, n_trials=trials, timeout_seconds=tcfg.get("timeout_seconds", 0)
+    )
+    console.print(f"[green]Best walk-forward balanced accuracy:[/green] {out['best_value']:.4f}")
+    table = Table(title="Best hyperparameters")
+    table.add_column("param")
+    table.add_column("value", justify="right")
+    for k, v in out["best_params"].items():
+        table.add_row(k, f"{v:.5g}" if isinstance(v, float) else str(v))
     console.print(table)
 
 
