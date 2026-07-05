@@ -117,6 +117,54 @@ def bollinger(close: pd.Series, window: int = 20, n_std: float = 2.0) -> pd.Data
     return pd.DataFrame({"bb_mid": mid, "bb_upper": upper, "bb_lower": lower, "bb_width": width})
 
 
+def vwap(df: pd.DataFrame) -> pd.Series:
+    """Session-anchored VWAP (resets each trading day).
+
+    Anchoring per day keeps VWAP meaningful for intraday timeframes and avoids
+    leaking a running total across the overnight gap.
+    """
+    typical = (df["high"] + df["low"] + df["close"]) / 3.0
+    pv = typical * df["volume"]
+    day = df.index.normalize()
+    cum_pv = pv.groupby(day).cumsum()
+    cum_vol = df["volume"].groupby(day).cumsum().replace(0.0, np.nan)
+    return cum_pv / cum_vol
+
+
+def obv(df: pd.DataFrame) -> pd.Series:
+    """On-Balance Volume — cumulative signed volume by close direction."""
+    direction = np.sign(df["close"].diff()).fillna(0.0)
+    return (direction * df["volume"]).cumsum()
+
+
+def stochastic(df: pd.DataFrame, k_window: int = 14, d_window: int = 3) -> pd.DataFrame:
+    """Stochastic oscillator %K and its %D smoothing (0..100)."""
+    low_min = df["low"].rolling(k_window, min_periods=k_window).min()
+    high_max = df["high"].rolling(k_window, min_periods=k_window).max()
+    span = (high_max - low_min).replace(0.0, np.nan)
+    percent_k = 100.0 * (df["close"] - low_min) / span
+    percent_d = percent_k.rolling(d_window, min_periods=d_window).mean()
+    return pd.DataFrame({"stoch_k": percent_k, "stoch_d": percent_d})
+
+
+def adx(df: pd.DataFrame, window: int = 14) -> pd.DataFrame:
+    """Average Directional Index with +DI/-DI (Wilder smoothing)."""
+    up_move = df["high"].diff()
+    down_move = -df["low"].diff()
+    plus_dm = up_move.where((up_move > down_move) & (up_move > 0), 0.0)
+    minus_dm = down_move.where((down_move > up_move) & (down_move > 0), 0.0)
+
+    tr = true_range(df)
+    atr_ = tr.ewm(alpha=1 / window, adjust=False, min_periods=window).mean()
+    plus_di = 100.0 * plus_dm.ewm(alpha=1 / window, adjust=False, min_periods=window).mean() / atr_
+    minus_di = (
+        100.0 * minus_dm.ewm(alpha=1 / window, adjust=False, min_periods=window).mean() / atr_
+    )
+    dx = 100.0 * (plus_di - minus_di).abs() / (plus_di + minus_di).replace(0.0, np.nan)
+    adx_ = dx.ewm(alpha=1 / window, adjust=False, min_periods=window).mean()
+    return pd.DataFrame({"adx": adx_, "plus_di": plus_di, "minus_di": minus_di})
+
+
 # --------------------------------------------------------------------------- #
 # Feature assembly                                                             #
 # --------------------------------------------------------------------------- #
@@ -138,6 +186,14 @@ def add_indicators(df: pd.DataFrame, atr_window: int = 14) -> pd.DataFrame:
     out = pd.concat([out, macd(close)], axis=1)
     out["atr"] = atr(out, atr_window)
     out = pd.concat([out, bollinger(close)], axis=1)
+    out = pd.concat([out, stochastic(out)], axis=1)
+    out = pd.concat([out, adx(out)], axis=1)
+    # Volume-based features, expressed as deviations to keep them stationary.
+    out["vwap_dev"] = (close - vwap(out)) / close
+    obv_series = obv(out)
+    out["obv_z"] = (obv_series - obv_series.rolling(50, min_periods=10).mean()) / (
+        obv_series.rolling(50, min_periods=10).std().replace(0.0, np.nan)
+    )
     # Normalized position of close within the bar and range vs ATR.
     span = (out["high"] - out["low"]).replace(0.0, np.nan)
     out["close_pos"] = (close - out["low"]) / span

@@ -27,6 +27,16 @@ train:
   val_fraction: 0.2          # temporal (walk-forward) split, no shuffling
   early_stopping_patience: 4
   num_workers: 0
+  loss: focal                # ce | focal (focal focuses on hard, ambiguous bars)
+  focal_gamma: 1.5
+
+walk_forward:
+  n_splits: 4                # rolling out-of-sample folds for validation
+  expanding: true            # expanding train window (vs fixed rolling)
+
+tune:
+  n_trials: 20               # Optuna trials (requires: uv sync --extra tune)
+  timeout_seconds: 0         # 0 = no timeout
 
 baseline:
   # LightGBM on flattened multi-timeframe features.

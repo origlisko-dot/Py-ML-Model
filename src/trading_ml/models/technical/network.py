@@ -18,6 +18,22 @@ import torch
 from torch import nn
 
 
+class _AttentionPool(nn.Module):
+    """Attention pooling over a sequence: a learned weighted sum of time steps.
+
+    Replaces last-step / mean pooling — the model learns which bars in the
+    window matter for the decision rather than committing to a fixed heuristic.
+    """
+
+    def __init__(self, d_model: int):
+        super().__init__()
+        self.score = nn.Linear(d_model, 1)
+
+    def forward(self, h: torch.Tensor) -> torch.Tensor:  # (B, W, d) -> (B, d)
+        weights = torch.softmax(self.score(h), dim=1)  # (B, W, 1)
+        return (weights * h).sum(dim=1)
+
+
 class _TCNEncoder(nn.Module):
     """Small dilated temporal conv stack over one timeframe's sequence."""
 
@@ -34,6 +50,7 @@ class _TCNEncoder(nn.Module):
             layers.append(nn.Dropout(dropout))
         self.tcn = nn.Sequential(*layers)
         self.norm = nn.LayerNorm(d_model)
+        self.pool = _AttentionPool(d_model)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:  # (B, W, F) -> (B, d_model)
         h = self.input_proj(x)  # (B, W, d)
@@ -41,7 +58,7 @@ class _TCNEncoder(nn.Module):
         h = self.tcn(h)
         h = h.transpose(1, 2)  # (B, W, d)
         h = self.norm(h)
-        return h[:, -1, :]  # last (most recent) step
+        return self.pool(h)  # attention-weighted over the window
 
 
 class _TransformerEncoder(nn.Module):
@@ -54,11 +71,12 @@ class _TransformerEncoder(nn.Module):
             d_model, n_heads, dim_feedforward=4 * d_model, dropout=dropout, batch_first=True
         )
         self.encoder = nn.TransformerEncoder(layer, n_layers)
+        self.pool = _AttentionPool(d_model)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:  # (B, W, F) -> (B, d_model)
         h = self.input_proj(x)
         h = self.encoder(h)
-        return h.mean(dim=1)
+        return self.pool(h)
 
 
 class CrossTimeframeNet(nn.Module):
