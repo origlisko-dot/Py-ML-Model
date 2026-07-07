@@ -57,3 +57,49 @@ def test_max_position_cap():
     plan = rm.size_position(_signal(1), equity=100_000, price=100.0, atr=1.0)
     # Notional capped at 25% of equity despite the huge risk budget.
     assert plan.quantity * plan.entry <= 100_000 * 0.25 + 100.0
+
+
+def test_kelly_fraction_formula():
+    from trading_ml.models.risk.position_sizing import kelly_fraction
+
+    # p=0.6, b=2 -> 0.6 - 0.4/2 = 0.4
+    assert abs(kelly_fraction(0.6, 2.0) - 0.4) < 1e-9
+    # negative edge clamps to 0
+    assert kelly_fraction(0.3, 1.0) == 0.0
+    # bounded to 1
+    assert kelly_fraction(1.0, 2.0) <= 1.0
+
+
+def test_kelly_sizing_scales_with_confidence():
+    from trading_ml.models.risk.position_sizing import RiskModel, SizingMethod
+
+    rm = RiskModel(
+        method=SizingMethod.KELLY,
+        rr_ratio=2.0,
+        stop_atr_mult=1.0,
+        max_position_pct=1.0,
+        kelly_multiplier=0.1,
+    )
+    # atr=10 keeps sizes below the notional cap so Kelly's edge shows through.
+    lo = rm.size_position(_signal(1), 100_000, 100.0, 10.0)
+    hi_sig = _signal(1)
+    hi_sig.probability = 0.9
+    hi = rm.size_position(hi_sig, 100_000, 100.0, 10.0)
+    # Higher win probability -> larger Kelly size.
+    assert hi.quantity > lo.quantity
+    assert hi.method == "kelly" and "kelly_f" in hi.meta
+
+
+def test_vol_target_sizing():
+    from trading_ml.models.risk.position_sizing import RiskModel, SizingMethod
+
+    rm = RiskModel(
+        method=SizingMethod.VOL_TARGET,
+        stop_atr_mult=1.0,
+        max_position_pct=1.0,
+        target_volatility=0.01,
+    )
+    plan = rm.size_position(_signal(1), 100_000, 100.0, 2.0)
+    # risk budget = equity * target_vol = 1000; qty = 1000 / (stop_dist=2) = 500
+    assert plan.quantity == 500
+    assert plan.method == "vol_target"

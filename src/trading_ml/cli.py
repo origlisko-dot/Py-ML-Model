@@ -112,6 +112,7 @@ def backtest(
     min_prob: float = typer.Option(0.45, help="Minimum signal probability to trade."),
     use_baseline: bool = typer.Option(False, help="Backtest the LightGBM baseline instead."),
     use_ensemble: bool = typer.Option(False, help="Backtest the net+baseline ensemble."),
+    portfolio: bool = typer.Option(False, help="Enable portfolio-level risk constraints."),
 ) -> None:
     """Backtest a trained model with the risk sizer and print metrics."""
     cfg = load_config()
@@ -144,7 +145,6 @@ def backtest(
     from trading_ml.backtest import run_backtest
     from trading_ml.features.indicators import fill_missing_bars
     from trading_ml.features.multi_timeframe import to_close_labeled
-    from trading_ml.models.risk import RiskModel
     from trading_ml.strategy import StrategyEngine
 
     # Backtest prices must be close-labeled to match signal timestamps.
@@ -152,13 +152,18 @@ def backtest(
         sym: to_close_labeled(fill_missing_bars(df, base_tf), base_tf) for sym, df in frames.items()
     }
     combined = StrategyEngine(min_prob=min_prob).combine(signals)
+    risk_model, trail, pm = _build_risk(mcfg, price_frames, portfolio)
     result = run_backtest(
         combined,
         price_frames,
-        risk_model=RiskModel(),
+        risk_model=risk_model,
         atr_window=mcfg["labeling"]["atr_window"],
         min_prob=min_prob,
+        trail_atr_mult=trail,
+        portfolio=pm,
     )
+    if result.rejections:
+        console.print(f"Portfolio rejections: {result.rejections}")
 
     table = Table(title=f"Backtest — {model}{' (baseline)' if use_baseline else ''}")
     table.add_column("metric")
@@ -231,6 +236,43 @@ def tune(
     for k, v in out["best_params"].items():
         table.add_row(k, f"{v:.5g}" if isinstance(v, float) else str(v))
     console.print(table)
+
+
+def _build_risk(mcfg, price_frames, portfolio_flag):
+    """Construct (RiskModel, trail_atr_mult, PortfolioRiskManager|None) from config."""
+    from trading_ml.models.risk import RiskModel
+
+    rc = mcfg.get("risk", {})
+    risk_model = RiskModel(
+        risk_pct=rc.get("risk_pct", 0.01),
+        rr_ratio=rc.get("rr_ratio", 2.0),
+        stop_atr_mult=rc.get("stop_atr_mult", 1.5),
+        max_position_pct=rc.get("max_position_pct", 0.25),
+        method=rc.get("method", "fixed_fractional"),
+        kelly_multiplier=rc.get("kelly_multiplier", 0.5),
+        target_volatility=rc.get("target_volatility", 0.01),
+    )
+    trail = rc.get("trail_atr_mult", 0.0) or None
+
+    pcfg = rc.get("portfolio", {})
+    pm = None
+    if portfolio_flag or pcfg.get("enabled", False):
+        import pandas as pd
+
+        from trading_ml.models.risk.portfolio import PortfolioRiskManager, correlation_lookup
+
+        returns = pd.DataFrame(
+            {sym: f["close"].pct_change() for sym, f in price_frames.items()}
+        ).dropna(how="all")
+        pm = PortfolioRiskManager(
+            max_concurrent_positions=pcfg.get("max_concurrent_positions", 5),
+            max_total_risk_pct=pcfg.get("max_total_risk_pct", 0.06),
+            max_symbol_exposure_pct=pcfg.get("max_symbol_exposure_pct", 0.25),
+            max_daily_loss_pct=pcfg.get("max_daily_loss_pct", 0.03),
+            max_correlation=pcfg.get("max_correlation", 0.8),
+            correlation=correlation_lookup(returns) if len(price_frames) > 1 else None,
+        )
+    return risk_model, trail, pm
 
 
 def _mlflow_logger(cfg):

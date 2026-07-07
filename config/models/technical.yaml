@@ -44,3 +44,20 @@ baseline:
   learning_rate: 0.05
   num_leaves: 31
   max_depth: -1
+
+risk:
+  method: fixed_fractional   # fixed_fractional | kelly | vol_target
+  risk_pct: 0.01             # fraction of equity risked per trade
+  rr_ratio: 2.0              # take-profit / stop distance
+  stop_atr_mult: 1.5         # hard stop distance in ATRs
+  max_position_pct: 0.25     # notional cap per position
+  kelly_multiplier: 0.5      # fractional-Kelly damping (method=kelly)
+  target_volatility: 0.01    # equity-vol target (method=vol_target)
+  trail_atr_mult: 0.0        # >0 enables an ATR trailing stop
+  portfolio:
+    enabled: false           # enable portfolio-level constraints
+    max_concurrent_positions: 5
+    max_total_risk_pct: 0.06
+    max_symbol_exposure_pct: 0.25
+    max_daily_loss_pct: 0.03
+    max_correlation: 0.8
