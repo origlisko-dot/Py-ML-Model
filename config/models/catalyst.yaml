@@ -1,0 +1,36 @@
+# Model 3 — event-driven catalyst detection.
+# Consumed as a plain dict via `load_model_config("catalyst")`.
+
+data:
+  lookback: 30d          # default news window for ingestion/detection
+
+model:
+  # Zero-shot classifier assigns the catalyst *type*; FinBERT sentiment sets
+  # the *strength*. Both are lazily loaded (require `uv sync --extra nlp`).
+  type_model: facebook/bart-large-mnli
+  sentiment_model: ProsusAI/finbert
+  min_confidence: 0.5    # below this the item is CatalystType.NONE
+  multi_label: false     # zero-shot: single best label
+
+# Natural-language hypotheses fed to the zero-shot model, each mapped to a
+# CatalystType. A neutral catch-all keeps routine news from forcing a catalyst.
+catalyst_labels:
+  "merger or acquisition or takeover": m_and_a
+  "strategic partnership or collaboration or joint venture": partnership
+  "technological breakthrough, product launch, or regulatory approval": breakthrough
+  "quarterly earnings or financial results or guidance": earnings
+  "regulatory action, lawsuit, or government investigation": regulatory
+  "routine business news with no major catalyst": none
+
+# Base strength per catalyst type (0..1). FinBERT sentiment scales this: a
+# strongly-worded positive story lands near the base, a muted one below it.
+strength:
+  m_and_a: 0.9
+  breakthrough: 0.7
+  partnership: 0.5
+  earnings: 0.4
+  regulatory: 0.5
+
+strategy:
+  catalyst_window: 1D    # a catalyst boosts signals within this window after it
+  catalyst_boost: 0.15   # max additive probability boost

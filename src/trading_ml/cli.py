@@ -61,6 +61,61 @@ def ingest(
     console.print(table)
 
 
+@app.command(name="ingest-news")
+def ingest_news(
+    symbols: str = typer.Option(None, help="Comma-separated symbols (default: config)."),
+    provider: str = typer.Option(None, help="yfinance | memory (default: config)."),
+    lookback: str = typer.Option("30d", help="How far back to fetch news."),
+    no_resume: bool = typer.Option(False, help="Ignore checkpoints and re-fetch."),
+) -> None:
+    """Download and store news items into the partitioned Parquet store (Model 3)."""
+    from trading_ml.data.news_ingestion import ingest_news as run_ingest_news
+
+    reports = run_ingest_news(
+        symbols=_parse_csv(symbols),
+        provider_name=provider,
+        lookback=lookback,
+        resume=not no_resume,
+    )
+    table = Table(title="News ingestion report")
+    for col in ("symbol", "items", "chunks", "errors"):
+        table.add_column(col)
+    for r in reports:
+        table.add_row(r.symbol, str(r.items), str(r.chunks), str(len(r.errors)))
+    console.print(table)
+
+
+@app.command()
+def catalysts(
+    symbols: str = typer.Option(None, help="Comma-separated symbols (default: config)."),
+    lookback: str = typer.Option("30d", help="News window to scan."),
+    nlp: bool = typer.Option(False, help="Use the transformer classifier (needs --extra nlp)."),
+) -> None:
+    """Detect catalysts from stored news and print them (Model 3)."""
+    cfg = load_config()
+    syms = _parse_csv(symbols) or cfg.data.symbols
+    try:
+        signals = _detect_catalysts(syms, lookback=lookback, use_nlp=nlp)
+    except ImportError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1) from exc
+    actionable = [s for s in signals if s.is_actionable]
+    console.print(f"Scanned news for {syms}: {len(actionable)} actionable catalysts.")
+
+    table = Table(title=f"Catalysts ({'nlp' if nlp else 'keyword'})")
+    for col in ("timestamp", "symbol", "catalyst", "strength", "confidence"):
+        table.add_column(col)
+    for s in actionable:
+        table.add_row(
+            str(s.timestamp),
+            s.symbol,
+            s.catalyst.value,
+            f"{s.strength:.2f}",
+            f"{s.confidence:.2f}",
+        )
+    console.print(table)
+
+
 @app.command()
 def train(
     model: str = typer.Option("technical", help="Model to train."),
@@ -113,6 +168,8 @@ def backtest(
     use_baseline: bool = typer.Option(False, help="Backtest the LightGBM baseline instead."),
     use_ensemble: bool = typer.Option(False, help="Backtest the net+baseline ensemble."),
     portfolio: bool = typer.Option(False, help="Enable portfolio-level risk constraints."),
+    catalysts: bool = typer.Option(False, help="Fuse Model 3 news catalysts into signals."),
+    nlp: bool = typer.Option(False, help="Use the NLP catalyst classifier (needs --extra nlp)."),
 ) -> None:
     """Backtest a trained model with the risk sizer and print metrics."""
     cfg = load_config()
@@ -151,7 +208,16 @@ def backtest(
     price_frames = {
         sym: to_close_labeled(fill_missing_bars(df, base_tf), base_tf) for sym, df in frames.items()
     }
-    combined = StrategyEngine(min_prob=min_prob).combine(signals)
+    catalyst_signals = None
+    if catalysts:
+        try:
+            catalyst_signals = _detect_catalysts(syms, use_nlp=nlp)
+        except ImportError as exc:
+            console.print(f"[red]{exc}[/red]")
+            raise typer.Exit(1) from exc
+        n_act = sum(1 for c in catalyst_signals if c.is_actionable)
+        console.print(f"Fusing {n_act} actionable catalysts.")
+    combined = StrategyEngine(min_prob=min_prob).combine(signals, catalyst_signals)
     risk_model, trail, pm = _build_risk(mcfg, price_frames, portfolio)
     result = run_backtest(
         combined,
@@ -236,6 +302,36 @@ def tune(
     for k, v in out["best_params"].items():
         table.add_row(k, f"{v:.5g}" if isinstance(v, float) else str(v))
     console.print(table)
+
+
+def _detect_catalysts(symbols, lookback="30d", use_nlp=False):
+    """Read stored news for `symbols` and classify it into CatalystSignals.
+
+    Keyword classifier by default (dependency-free); the transformer classifier
+    with ``use_nlp=True`` (requires ``uv sync --extra nlp``).
+    """
+    import pandas as pd
+
+    from trading_ml.data import news_storage
+    from trading_ml.data.ingestion import _parse_window
+    from trading_ml.models.events import KeywordCatalystClassifier
+
+    end = pd.Timestamp.now(tz="UTC")
+    start = end - _parse_window(lookback)
+
+    if use_nlp:
+        from trading_ml.models.events import TransformerCatalystClassifier
+
+        clf = TransformerCatalystClassifier(load_model_config("catalyst"))
+    else:
+        clf = KeywordCatalystClassifier()
+
+    signals = []
+    for sym in symbols:
+        items = news_storage.read_news(sym, start=start, end=end)
+        if items:
+            signals.extend(clf.classify_batch(items))
+    return signals
 
 
 def _build_risk(mcfg, price_frames, portfolio_flag):
