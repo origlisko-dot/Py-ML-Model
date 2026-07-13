@@ -1,0 +1,23 @@
+/**
+ * Hermès-inspired brand tokens
+ * Official logo uses a custom typeface; this pack provides open-source slab-serif alternatives.
+ */
+:root {
+  /* Signature Hermès orange */
+  --hermes-orange: #f37021;
+  --hermes-orange-dark: #d45f18;
+  --hermes-orange-light: #ff8a3d;
+
+  /* Neutrals */
+  --hermes-cream: #faf7f2;
+  --hermes-ink: #1a1a1a;
+  --hermes-muted: #6b6b6b;
+
+  /* Typography scale */
+  --hermes-font-primary: "Sanchez", "Roboto Slab", Georgia, serif;
+  --hermes-font-display: "Sanchez", "Arvo", Georgia, serif;
+  --hermes-font-accent: "Zilla Slab", "Roboto Slab", Georgia, serif;
+
+  --hermes-tracking-wide: 0.28em;
+  --hermes-tracking-tight: 0.12em;
+}
