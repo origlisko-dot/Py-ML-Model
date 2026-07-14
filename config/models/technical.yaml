@@ -61,3 +61,12 @@ risk:
     max_symbol_exposure_pct: 0.25
     max_daily_loss_pct: 0.03
     max_correlation: 0.8
+
+costs:
+  # Realistic trading costs (retail equities). Applied when `backtest --costs`
+  # (on by default). Fills are adverse; commission is charged per side.
+  commission_per_share: 0.005  # $ per share, per side
+  commission_pct: 0.0          # fraction of notional, per side
+  min_commission: 1.0          # minimum commission, per side
+  slippage_bps: 1.0            # adverse price move, bps, per side
+  half_spread_bps: 1.0         # half bid/ask spread, bps, per side

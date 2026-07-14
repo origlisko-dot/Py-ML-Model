@@ -170,6 +170,9 @@ def backtest(
     portfolio: bool = typer.Option(False, help="Enable portfolio-level risk constraints."),
     catalysts: bool = typer.Option(False, help="Fuse Model 3 news catalysts into signals."),
     nlp: bool = typer.Option(False, help="Use the NLP catalyst classifier (needs --extra nlp)."),
+    costs: bool = typer.Option(
+        False, help="Apply realistic trading costs (commission/slippage) from config."
+    ),
 ) -> None:
     """Backtest a trained model with the risk sizer and print metrics."""
     cfg = load_config()
@@ -219,6 +222,7 @@ def backtest(
         console.print(f"Fusing {n_act} actionable catalysts.")
     combined = StrategyEngine(min_prob=min_prob).combine(signals, catalyst_signals)
     risk_model, trail, pm = _build_risk(mcfg, price_frames, portfolio)
+    cost_model = _build_costs(mcfg) if costs else None
     result = run_backtest(
         combined,
         price_frames,
@@ -227,6 +231,7 @@ def backtest(
         min_prob=min_prob,
         trail_atr_mult=trail,
         portfolio=pm,
+        cost_model=cost_model,
     )
     if result.rejections:
         console.print(f"Portfolio rejections: {result.rejections}")
@@ -332,6 +337,20 @@ def _detect_catalysts(symbols, lookback="30d", use_nlp=False):
         if items:
             signals.extend(clf.classify_batch(items))
     return signals
+
+
+def _build_costs(mcfg):
+    """Construct a CostModel from the model config's `costs` section."""
+    from trading_ml.backtest.costs import CostModel
+
+    cc = mcfg.get("costs", {})
+    return CostModel(
+        commission_per_share=cc.get("commission_per_share", 0.0),
+        commission_pct=cc.get("commission_pct", 0.0),
+        min_commission=cc.get("min_commission", 0.0),
+        slippage_bps=cc.get("slippage_bps", 0.0),
+        half_spread_bps=cc.get("half_spread_bps", 0.0),
+    )
 
 
 def _build_risk(mcfg, price_frames, portfolio_flag):

@@ -77,6 +77,9 @@ uv run trading-ml backtest --model technical --use-ensemble
 # Backtest with portfolio-level risk constraints (Model 2)
 uv run trading-ml backtest --model technical --portfolio
 
+# Backtest with realistic trading costs (commission + slippage + spread)
+uv run trading-ml backtest --model technical --costs
+
 # Model 3: ingest news, detect catalysts, fuse them into the backtest
 uv run trading-ml ingest-news --symbols AAPL,MSFT
 uv run trading-ml catalysts   --symbols AAPL              # keyword classifier
@@ -99,6 +102,6 @@ uv run mypy src
 
 - `config/default.yaml` — paths, seed, MLflow.
 - `config/data.yaml` — symbols, timeframes, market + news providers, pacing.
-- `config/models/technical.yaml` — Model 1 hyperparameters.
+- `config/models/technical.yaml` — Model 1 hyperparameters, risk (Model 2), and trading `costs`.
 - `config/models/catalyst.yaml` — Model 3 news window, model ids, label map, fusion.
 - `.env` — secrets / host config (see `.env.example`).

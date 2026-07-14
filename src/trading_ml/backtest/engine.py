@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
+from trading_ml.backtest.costs import CostModel
 from trading_ml.backtest.metrics import compute_metrics
 from trading_ml.features.indicators import atr as atr_indicator
 from trading_ml.models.base import Signal
@@ -45,6 +46,7 @@ class Trade:
     pnl: float
     return_pct: float
     reason: str  # "stop" | "trail" | "take" | "horizon"
+    cost: float = 0.0  # slippage + spread + commissions charged on this trade
 
 
 @dataclass
@@ -106,9 +108,11 @@ def run_backtest(
     periods_per_year: float = 252.0,
     trail_atr_mult: float | None = None,
     portfolio: PortfolioRiskManager | None = None,
+    cost_model: CostModel | None = None,
 ) -> BacktestResult:
     """Run the backtest over signals and close-labeled base OHLCV frames."""
     risk_model = risk_model or RiskModel()
+    cost_model = cost_model or CostModel()  # default: frictionless (backward compatible)
     atr_series = {
         sym: atr_indicator(frame, atr_window).to_numpy() for sym, frame in price_frames.items()
     }
@@ -125,6 +129,7 @@ def run_backtest(
             initial_equity,
             trail_atr_mult,
             periods_per_year,
+            cost_model,
         )
     return _run_portfolio(
         ordered,
@@ -135,6 +140,7 @@ def run_backtest(
         initial_equity,
         trail_atr_mult,
         periods_per_year,
+        cost_model,
     )
 
 
@@ -154,7 +160,9 @@ def _open_context(sig, frame, atr_arr):
     return entry_idx, float(frame["open"].iloc[entry_idx]), atr_val
 
 
-def _run_legacy(signals, price_frames, atr_series, risk_model, initial_equity, trail_atr_mult, ppy):
+def _run_legacy(
+    signals, price_frames, atr_series, risk_model, initial_equity, trail_atr_mult, ppy, cost_model
+):
     result = BacktestResult(equity_curve=[initial_equity])
     equity = initial_equity
     busy_until: dict[str, pd.Timestamp] = {}
@@ -183,7 +191,7 @@ def _run_legacy(signals, price_frames, atr_series, risk_model, initial_equity, t
             sig.horizon,
             trail_atr_mult,
         )
-        pnl = plan.direction * (exit_price - entry_price) * plan.quantity
+        pnl, cost = cost_model.apply(entry_price, exit_price, plan.direction, plan.quantity)
         equity += pnl
         result.trades.append(
             Trade(
@@ -197,6 +205,7 @@ def _run_legacy(signals, price_frames, atr_series, risk_model, initial_equity, t
                 pnl,
                 pnl / (equity - pnl),
                 reason,
+                cost,
             )
         )
         result.equity_curve.append(equity)
@@ -204,11 +213,20 @@ def _run_legacy(signals, price_frames, atr_series, risk_model, initial_equity, t
 
     returns = np.array([t.return_pct for t in result.trades], dtype=float)
     result.metrics = compute_metrics(returns, np.array(result.equity_curve), ppy)
+    result.metrics["total_costs"] = float(sum(t.cost for t in result.trades))
     return result
 
 
 def _run_portfolio(
-    signals, price_frames, atr_series, risk_model, portfolio, initial_equity, trail_atr_mult, ppy
+    signals,
+    price_frames,
+    atr_series,
+    risk_model,
+    portfolio,
+    initial_equity,
+    trail_atr_mult,
+    ppy,
+    cost_model,
 ):
     result = BacktestResult(equity_curve=[initial_equity])
     equity = initial_equity
@@ -254,7 +272,7 @@ def _run_portfolio(
             sig.horizon,
             trail_atr_mult,
         )
-        pnl = plan.direction * (exit_price - entry_price) * plan.quantity
+        pnl, cost = cost_model.apply(entry_price, exit_price, plan.direction, plan.quantity)
         portfolio.register_open(plan, sig.timestamp)
         trade = Trade(
             sig.symbol,
@@ -267,6 +285,7 @@ def _run_portfolio(
             pnl,
             0.0,
             reason,
+            cost,
         )
         heapq.heappush(pending, (exit_time, next(counter), trade))
 
@@ -274,4 +293,5 @@ def _run_portfolio(
 
     returns = np.array([t.return_pct for t in result.trades], dtype=float)
     result.metrics = compute_metrics(returns, np.array(result.equity_curve), ppy)
+    result.metrics["total_costs"] = float(sum(t.cost for t in result.trades))
     return result
