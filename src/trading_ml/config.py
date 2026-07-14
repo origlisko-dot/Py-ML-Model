@@ -84,12 +84,22 @@ class IBKRDataConfig(BaseModel):
     max_retries: int = 3
 
 
+class NewsDataConfig(BaseModel):
+    """Pacing policy for news ingestion (Model 3)."""
+
+    chunk: str = "7d"
+    throttle_seconds: float = 0.0
+    max_retries: int = 3
+
+
 class DataConfig(BaseModel):
     provider: str = "yfinance"
+    news_provider: str = "yfinance"
     symbols: list[str] = Field(default_factory=lambda: ["AAPL"])
     timeframes: list[str] = Field(default_factory=lambda: ["1d"])
     history: dict[str, str] = Field(default_factory=dict)
     ibkr: IBKRDataConfig = Field(default_factory=IBKRDataConfig)
+    news: NewsDataConfig = Field(default_factory=NewsDataConfig)
 
 
 class Config(BaseModel):

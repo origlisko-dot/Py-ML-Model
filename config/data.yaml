@@ -1,6 +1,7 @@
 # Data ingestion configuration: symbols, timeframes, active provider.
 
 provider: yfinance          # yfinance | ibkr
+news_provider: yfinance     # yfinance | memory  (news source for Model 3)
 
 symbols:
   - AAPL
@@ -30,4 +31,11 @@ ibkr:
   # Chunked historical downloads to respect IBKR pacing limits.
   chunk: 1W                 # download window per request
   throttle_seconds: 10.0    # min delay between historical requests
+  max_retries: 3
+
+news:
+  # Chunked news fetches (Model 3). yfinance exposes only recent items, so a
+  # modest window is enough; other providers/APIs may need throttling.
+  chunk: 7d                 # fetch window per request
+  throttle_seconds: 0.0     # min delay between news requests
   max_retries: 3

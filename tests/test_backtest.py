@@ -67,3 +67,43 @@ def test_max_drawdown():
     dd = max_drawdown(equity)
     # Peak 120 -> trough 90 = -25%.
     assert abs(dd - (-0.25)) < 1e-9
+
+
+def test_trailing_stop_locks_in_gain():
+    # Rise to 125 then pull back; a 2*ATR trailing stop should exit in profit.
+    closes = np.concatenate([np.linspace(100, 125, 40), np.linspace(125, 110, 25)])
+    df = _frame(closes, closes + 0.3, closes - 0.3)
+    sig = Signal(timestamp=df.index[10], symbol="X", direction=1, probability=0.9, horizon=60)
+    res = run_backtest(
+        [sig],
+        {"X": df},
+        RiskModel(stop_atr_mult=2.0, rr_ratio=20.0),
+        atr_window=5,
+        trail_atr_mult=2.0,
+    )
+    assert len(res.trades) == 1
+    assert res.trades[0].reason == "trail"
+    assert res.trades[0].pnl > 0
+
+
+def test_portfolio_mode_limits_concurrency():
+    from trading_ml.models.risk.portfolio import PortfolioRiskManager
+
+    frames, sigs = {}, []
+    for s in ("A", "B", "C"):
+        c = np.linspace(100, 110, 60)
+        frames[s] = _frame(c, c + 0.3, c - 0.3)
+        sigs.append(
+            Signal(
+                timestamp=frames[s].index[10], symbol=s, direction=1, probability=0.9, horizon=40
+            )
+        )
+    pm = PortfolioRiskManager(
+        max_concurrent_positions=2, max_total_risk_pct=1.0, max_symbol_exposure_pct=1.0
+    )
+    res = run_backtest(
+        sigs, frames, RiskModel(stop_atr_mult=1.0, rr_ratio=2.0), atr_window=5, portfolio=pm
+    )
+    # Only 2 can be open at once; the 3rd simultaneous signal is rejected.
+    assert res.rejections.get("max concurrent positions", 0) >= 1
+    assert len(res.trades) == 2

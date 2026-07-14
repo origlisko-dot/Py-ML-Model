@@ -35,9 +35,13 @@ providers = [
     "yfinance>=0.2.40",
     "ib_async>=1.0",
 ]
-# NLP scaffold for the event-driven model (Model 3).
+# NLP stack for the event-driven model (Model 3). Pulls in the `ml` extra for a
+# torch backend (zero-shot / FinBERT pipelines need it); kept out of CI so the
+# core stays lightweight — NLP tests skip via `pytest.importorskip`.
 nlp = [
+    "trading-ml[ml]",
     "transformers>=4.40",
+    "huggingface-hub>=0.23",
 ]
 # Hyperparameter optimization for Model 1.
 tune = [

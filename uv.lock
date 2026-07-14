@@ -3971,6 +3971,12 @@ ml = [
     { name = "torch" },
 ]
 nlp = [
+    { name = "huggingface-hub" },
+    { name = "lightgbm" },
+    { name = "lightning" },
+    { name = "mlflow" },
+    { name = "scikit-learn" },
+    { name = "torch" },
     { name = "transformers" },
 ]
 providers = [
@@ -3984,6 +3990,7 @@ tune = [
 [package.metadata]
 requires-dist = [
     { name = "duckdb", specifier = ">=1.0" },
+    { name = "huggingface-hub", marker = "extra == 'nlp'", specifier = ">=0.23" },
     { name = "ib-async", marker = "extra == 'providers'", specifier = ">=1.0" },
     { name = "lightgbm", marker = "extra == 'ml'", specifier = ">=4.3" },
     { name = "lightning", marker = "extra == 'ml'", specifier = ">=2.2" },
@@ -4004,6 +4011,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },
     { name = "scikit-learn", marker = "extra == 'ml'", specifier = ">=1.4" },
     { name = "torch", marker = "extra == 'ml'", specifier = ">=2.2" },
+    { name = "trading-ml", extras = ["ml"], marker = "extra == 'nlp'" },
     { name = "transformers", marker = "extra == 'nlp'", specifier = ">=4.40" },
     { name = "typer", specifier = ">=0.12" },
     { name = "types-pyyaml", marker = "extra == 'dev'" },
