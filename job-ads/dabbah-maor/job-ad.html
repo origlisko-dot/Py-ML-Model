@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>דרוש נהג חלוקת גז | דבח מאור סוכנות גז</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --navy: #050b18;
+      --navy-2: #0a1528;
+      --gold: #d4af37;
+      --gold-light: #f0d878;
+      --gold-dark: #9a7b1a;
+      --neon: #00bfff;
+      --neon-soft: #5ad4ff;
+      --white: #ffffff;
+      --muted: #c8d0dc;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #1a1a1a;
+      font-family: "Heebo", sans-serif;
+      padding: 24px;
+    }
+
+    .poster {
+      width: min(100%, 720px);
+      aspect-ratio: 2 / 3;
+      background:
+        radial-gradient(ellipse 80% 40% at 50% 0%, rgba(0, 191, 255, 0.08), transparent 55%),
+        radial-gradient(ellipse 60% 50% at 100% 100%, rgba(212, 175, 55, 0.06), transparent 50%),
+        radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.045) 1px, transparent 0),
+        linear-gradient(165deg, var(--navy-2) 0%, var(--navy) 45%, #03070f 100%);
+      background-size: auto, auto, 18px 18px, auto;
+      border: 2px solid var(--gold);
+      border-radius: 22px;
+      box-shadow:
+        0 0 0 1px rgba(212, 175, 55, 0.25),
+        0 30px 80px rgba(0, 0, 0, 0.55),
+        inset 0 0 60px rgba(0, 0, 0, 0.35);
+      color: var(--white);
+      padding: clamp(18px, 3.2vw, 28px);
+      display: flex;
+      flex-direction: column;
+      gap: clamp(10px, 1.6vw, 16px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .poster::before {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border: 1px solid rgba(212, 175, 55, 0.28);
+      border-radius: 16px;
+      pointer-events: none;
+    }
+
+    .header {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: start;
+      gap: 12px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .badge {
+      align-self: start;
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--neon);
+      color: var(--neon-soft);
+      font-size: clamp(11px, 1.5vw, 13px);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      box-shadow: 0 0 16px rgba(0, 191, 255, 0.35);
+      background: rgba(0, 191, 255, 0.08);
+      white-space: nowrap;
+    }
+
+    .brand {
+      text-align: center;
+      padding-top: 2px;
+    }
+
+    .brand .top {
+      color: var(--neon-soft);
+      font-weight: 800;
+      font-size: clamp(18px, 2.8vw, 26px);
+      line-height: 1.15;
+      text-shadow: 0 0 18px rgba(0, 191, 255, 0.35);
+    }
+
+    .brand .bottom {
+      color: var(--white);
+      font-weight: 700;
+      font-size: clamp(13px, 2vw, 17px);
+      margin-top: 2px;
+    }
+
+    .logo-d {
+      width: clamp(48px, 8vw, 64px);
+      height: clamp(48px, 8vw, 64px);
+      display: grid;
+      place-items: center;
+      position: relative;
+    }
+
+    .logo-d svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 0 10px rgba(0, 191, 255, 0.85));
+    }
+
+    .divider {
+      height: 2px;
+      border: none;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        var(--gold-dark) 15%,
+        var(--gold-light) 50%,
+        var(--gold-dark) 85%,
+        transparent 100%
+      );
+      box-shadow: 0 0 18px rgba(240, 216, 120, 0.55);
+      position: relative;
+      z-index: 1;
+    }
+
+    .title-block {
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .title-row h1 {
+      font-size: clamp(26px, 4.4vw, 40px);
+      font-weight: 900;
+      line-height: 1.15;
+      background: linear-gradient(180deg, var(--gold-light) 0%, var(--gold) 45%, var(--gold-dark) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: none;
+      filter: drop-shadow(0 2px 8px rgba(212, 175, 55, 0.25));
+    }
+
+    .truck-icon {
+      width: clamp(28px, 4vw, 36px);
+      height: clamp(28px, 4vw, 36px);
+      color: var(--gold);
+      flex-shrink: 0;
+    }
+
+    .intro {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: clamp(13px, 1.8vw, 16px);
+      font-weight: 500;
+      line-height: 1.45;
+      max-width: 36em;
+      margin-inline: auto;
+    }
+
+    .hero {
+      position: relative;
+      z-index: 1;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid rgba(212, 175, 55, 0.45);
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+      aspect-ratio: 16 / 9;
+      min-height: 160px;
+      background: #0a1528;
+    }
+
+    .hero img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(5, 11, 24, 0.05), rgba(5, 11, 24, 0.35));
+      pointer-events: none;
+    }
+
+    .reqs {
+      list-style: none;
+      display: grid;
+      gap: 8px;
+      position: relative;
+      z-index: 1;
+      padding-inline: 4px;
+    }
+
+    .reqs li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: clamp(14px, 1.9vw, 17px);
+      font-weight: 600;
+      color: var(--white);
+    }
+
+    .check {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1.5px solid var(--gold);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      background: rgba(212, 175, 55, 0.1);
+      box-shadow: 0 0 10px rgba(212, 175, 55, 0.25);
+    }
+
+    .check svg {
+      width: 12px;
+      height: 12px;
+      color: var(--gold-light);
+    }
+
+    .accent {
+      color: var(--gold-light);
+      font-weight: 800;
+    }
+
+    .info-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .info-box {
+      border: 1.5px solid rgba(212, 175, 55, 0.75);
+      border-radius: 14px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(180deg, rgba(212, 175, 55, 0.08), rgba(255, 255, 255, 0.02));
+      box-shadow: inset 0 0 20px rgba(212, 175, 55, 0.05);
+    }
+
+    .info-box svg {
+      width: 26px;
+      height: 26px;
+      color: var(--gold);
+      flex-shrink: 0;
+      filter: drop-shadow(0 0 6px rgba(212, 175, 55, 0.4));
+    }
+
+    .info-box span {
+      font-size: clamp(12px, 1.6vw, 14px);
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .contact {
+      margin-top: 2px;
+      border: 1.5px solid var(--gold);
+      border-radius: 999px;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: linear-gradient(180deg, rgba(212, 175, 55, 0.12), rgba(0, 0, 0, 0.2));
+      box-shadow: 0 0 24px rgba(212, 175, 55, 0.2);
+      position: relative;
+      z-index: 1;
+    }
+
+    .contact .phone {
+      font-size: clamp(18px, 2.6vw, 24px);
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: var(--white);
+    }
+
+    .contact svg {
+      width: 24px;
+      height: 24px;
+      color: var(--gold);
+      filter: drop-shadow(0 0 8px rgba(212, 175, 55, 0.45));
+    }
+
+    .footer {
+      text-align: center;
+      font-size: clamp(14px, 2vw, 17px);
+      font-weight: 800;
+      background: linear-gradient(180deg, var(--gold-light), var(--gold));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      position: relative;
+      z-index: 1;
+      margin-top: auto;
+      padding-bottom: 4px;
+    }
+
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+      .poster {
+        width: 100%;
+        max-width: none;
+        height: 100vh;
+        box-shadow: none;
+        border-radius: 0;
+        page-break-inside: avoid;
+      }
+      .poster::before { border-radius: 0; }
+    }
+  </style>
+</head>
+<body>
+  <article class="poster" aria-label="מודעת דרושים — נהג חלוקת גז">
+    <header class="header">
+      <div class="logo-d" aria-hidden="true">
+        <svg viewBox="0 0 64 64" fill="none">
+          <path d="M18 10h18c12 0 22 9 22 22s-10 22-22 22H18V10z" stroke="#00BFFF" stroke-width="4" fill="none"/>
+          <path d="M18 18h14c7.5 0 13.5 5.5 13.5 14S39.5 46 32 46H18V18z" stroke="#5AD4FF" stroke-width="2.2" opacity="0.85"/>
+          <path d="M30 28c2 3 2 7-1 10 4-1 7-4 7-8 0-3-2-5-4-6-1 1-2 2-2 4z" fill="#00BFFF" opacity="0.9"/>
+        </svg>
+      </div>
+      <div class="brand">
+        <div class="top">דלקל גז</div>
+        <div class="bottom">דבח מאור סוכנות גז</div>
+      </div>
+      <div class="badge">פרטי | עסקי</div>
+    </header>
+
+    <hr class="divider" />
+
+    <div class="title-block">
+      <div class="title-row">
+        <svg class="truck-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+          <rect x="4" y="16" width="24" height="16" rx="2" stroke="currentColor" stroke-width="2.5"/>
+          <path d="M28 22h8l6 6v4H28V22z" stroke="currentColor" stroke-width="2.5"/>
+          <circle cx="12" cy="34" r="3.5" stroke="currentColor" stroke-width="2.5"/>
+          <circle cx="36" cy="34" r="3.5" stroke="currentColor" stroke-width="2.5"/>
+          <rect x="8" y="12" width="4" height="5" rx="1" fill="currentColor"/>
+          <rect x="14" y="12" width="4" height="5" rx="1" fill="currentColor"/>
+          <rect x="20" y="12" width="4" height="5" rx="1" fill="currentColor"/>
+        </svg>
+        <h1>דרוש נהג חלוקת גז</h1>
+        <svg class="truck-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+          <rect x="4" y="16" width="24" height="16" rx="2" stroke="currentColor" stroke-width="2.5"/>
+          <path d="M28 22h8l6 6v4H28V22z" stroke="currentColor" stroke-width="2.5"/>
+          <circle cx="12" cy="34" r="3.5" stroke="currentColor" stroke-width="2.5"/>
+          <circle cx="36" cy="34" r="3.5" stroke="currentColor" stroke-width="2.5"/>
+          <rect x="8" y="12" width="4" height="5" rx="1" fill="currentColor"/>
+          <rect x="14" y="12" width="4" height="5" rx="1" fill="currentColor"/>
+          <rect x="20" y="12" width="4" height="5" rx="1" fill="currentColor"/>
+        </svg>
+      </div>
+      <p class="intro">מחפשים נהג אחראי ומסור להצטרף לצוות שלנו לחלוקת גז באזור העמקים.</p>
+    </div>
+
+    <div class="hero" role="img" aria-label="משאית חלוקת גז באזור העמקים">
+      <img src="truck-hero.png" alt="משאית חלוקת גז באזור העמקים" />
+    </div>
+
+    <ul class="reqs">
+      <li>
+        <span class="check" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span>רישיון נהיגה למשאית – <span class="accent">חובה</span></span>
+      </li>
+      <li>
+        <span class="check" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span>היתר הובלת חומרים מסוכנים (חומ״ס) – <span class="accent">יתרון</span></span>
+      </li>
+      <li>
+        <span class="check" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span>תודעת שירות גבוהה</span>
+      </li>
+      <li>
+        <span class="check" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span>אחריות, רצינות ויכולת עבודה עצמאית</span>
+      </li>
+      <li>
+        <span class="check" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span>נכונות לעבודה פיזית</span>
+      </li>
+    </ul>
+
+    <div class="info-row">
+      <div class="info-box">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 21s7-5.2 7-11a7 7 0 10-14 0c0 5.8 7 11 7 11z" stroke="currentColor" stroke-width="2"/>
+          <circle cx="12" cy="10" r="2.5" stroke="currentColor" stroke-width="2"/>
+        </svg>
+        <span>עבודה באזור עפולה, מגדל העמק והסביבה</span>
+      </div>
+      <div class="info-box">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M7 10V8a5 5 0 0110 0v2" stroke="currentColor" stroke-width="2"/>
+          <rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 14v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span>תנאים טובים למתאימים</span>
+      </div>
+    </div>
+
+    <div class="contact">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M6.5 4.5h3l1.5 4-2 1.5a12 12 0 005.5 5.5l1.5-2 4 1.5v3A2 2 0 0118 20 14 14 0 014 6a2 2 0 012.5-1.5z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+      <span class="phone">מאור – 054-4488800</span>
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 3a9 9 0 00-7.8 13.5L3 21l4.7-1.2A9 9 0 1012 3z" stroke="currentColor" stroke-width="2"/>
+        <path d="M9.2 9.4c.3-.5.6-.5.9-.5h.4c.2 0 .4 0 .5.4l.7 1.7c.1.3 0 .5-.2.7l-.5.5c-.2.2-.2.4 0 .6.5.8 1.3 1.5 2.2 2 .3.2.5.1.7-.1l.6-.7c.2-.2.4-.3.7-.2l1.8.7c.3.1.4.3.4.6v.4c0 .3 0 .6-.4.9-.5.4-1.2.6-1.9.6A8 8 0 019 10.2c0-.4.1-.7.2-.8z" fill="currentColor"/>
+      </svg>
+    </div>
+
+    <p class="footer">!הצטרפו לחברה משפחתית, יציבה וצומחת</p>
+  </article>
+</body>
+</html>
