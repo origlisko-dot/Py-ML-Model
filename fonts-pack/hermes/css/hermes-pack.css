@@ -1,0 +1,76 @@
+/**
+ * Hermès Fonts Pack — main entry point
+ *
+ * Usage:
+ *   <link rel="stylesheet" href="css/hermes-pack.css">
+ *   <h1 class="hermes-logo">HERMÈS</h1>
+ *   <p class="hermes-subtitle">PARIS</p>
+ */
+
+@import url("./fonts.css");
+@import url("./tokens.css");
+
+/* ── Logo lockup ─────────────────────────────────────────────────── */
+.hermes-lockup {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  text-align: center;
+  color: var(--hermes-orange);
+}
+
+.hermes-logo {
+  font-family: var(--hermes-font-primary);
+  font-weight: 400;
+  font-size: clamp(2.5rem, 8vw, 4.5rem);
+  letter-spacing: var(--hermes-tracking-wide);
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--hermes-orange);
+  margin: 0;
+}
+
+.hermes-subtitle {
+  font-family: var(--hermes-font-primary);
+  font-weight: 400;
+  font-size: clamp(0.75rem, 2.5vw, 1rem);
+  letter-spacing: var(--hermes-tracking-wide);
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--hermes-orange);
+  margin: 0;
+}
+
+/* ── Utility classes ─────────────────────────────────────────────── */
+.hermes-display {
+  font-family: var(--hermes-font-display);
+  font-weight: 700;
+  letter-spacing: var(--hermes-tracking-tight);
+  text-transform: uppercase;
+  color: var(--hermes-orange);
+}
+
+.hermes-body {
+  font-family: var(--hermes-font-accent);
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--hermes-ink);
+}
+
+.hermes-caption {
+  font-family: var(--hermes-font-accent);
+  font-weight: 300;
+  font-size: 0.875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--hermes-muted);
+}
+
+.hermes-orange {
+  color: var(--hermes-orange);
+}
+
+.hermes-bg-cream {
+  background-color: var(--hermes-cream);
+}
